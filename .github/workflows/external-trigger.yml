@@ -1,0 +1,76 @@
+name: Check for new version
+on:
+  schedule:
+    - cron: "*/40 * * * *"
+  push:
+    branches: ["main"]
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: write
+  actions: write
+
+jobs:
+  check_new_version:
+    runs-on: ubuntu-latest
+    outputs:
+      new_version: ${{ steps.check_version.outputs.new_version }}
+      version: ${{ steps.check_version.outputs.version }}
+      current_version: ${{ steps.check_version.outputs.current_version }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check if new version is available
+        id: check_version
+        run: |
+          current_version=$(curl -sL https://api.github.com/repos/${{ github.repository_owner }}/${{ github.event.repository.name }}/releases/latest | jq -r '.tag_name')
+          version=$(curl -sL https://api.github.com/repos/immich-app/base-images/tags | jq -r '.[0].name')
+          if [[ "$current_version" == "null" || "$version" == "null" ]]; then
+              echo "new_version=false" >> $GITHUB_OUTPUT
+          fi
+          if [ "$current_version" != "$version" ]; then
+            if git tag | grep -q "^$version$"; then
+              echo "Tag '$version' exists."
+            else
+              echo "New immich version ($version) detected."
+              echo "current_version=$current_version" >> $GITHUB_OUTPUT
+              echo "version=$version" >> $GITHUB_OUTPUT
+              echo "new_version=true" >> $GITHUB_OUTPUT
+              exit 0
+            fi
+          else
+            echo "Immich version ($version) already exists"
+          fi
+          echo "new_version=false" >> $GITHUB_OUTPUT
+
+  create_new_version:
+    if: ${{ needs.check_new_version.outputs.new_version == 'true' }}
+    runs-on: ubuntu-latest
+    needs: [check_new_version]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Create tag
+        run: |
+          git tag "${{ needs.check_new_version.outputs.version }}"
+          git push --tags
+
+      - name: Create release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release create ${{ needs.check_new_version.outputs.version }} \
+            --generate-notes \
+            --notes "New immich base image ${{ needs.check_new_version.outputs.version }}"
+
+      - name: Trigger workflow
+        if: github.event_name != 'push'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh workflow run docker.yml -f version=${{ needs.check_new_version.outputs.version }}

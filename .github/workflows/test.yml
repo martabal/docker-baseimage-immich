@@ -1,0 +1,41 @@
+name: Test suites
+
+on:
+  push:
+    branches: ["main"]
+  pull_request:
+    branches: ["main"]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  linter:
+    name: Run linters
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Run Hadolint
+        uses: hadolint/hadolint-action@v3.1.0
+        if: ${{ !cancelled() }}
+        with:
+          dockerfile: Dockerfile
+
+  format:
+    name: Prettier
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install prettier
+        run: npm i prettier@3.3.3
+
+      - name: Run formatter
+        run: npx prettier --check .
