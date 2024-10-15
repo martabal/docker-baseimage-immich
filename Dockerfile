@@ -1,0 +1,189 @@
+# syntax=docker/dockerfile:1
+
+FROM ghcr.io/martabal/baseimage-ubuntu:noble
+
+# set version label
+ARG BUILD_DATE
+
+ARG VERSION
+
+ARG LATEST_UBUNTU_VERSION="oracular"
+
+# hadolint ignore=DL3048
+LABEL build_version="Build-date:- ${BUILD_DATE}"
+LABEL maintainer="martabal"
+
+# hadolint ignore=DL3045
+COPY build-libjxl.sh.patch /tmp
+
+SHELL ["/bin/bash", "-o", "pipefail", "-c"]
+
+# run build
+# hadolint ignore=DL3003,DL3008,DL3013,SC2046,SC2086
+RUN \
+  echo "**** create folders ****" && \
+  mkdir -p \
+    /app/immich/server \
+    /tmp/immich-dependencies && \
+  echo "**** install build packages ****" && \
+  if [ $(arch) = "x86_64" ]; then \
+    UBUNTU_REPO="http://archive.ubuntu.com/ubuntu/"; \
+  else \
+    UBUNTU_REPO="http://ports.ubuntu.com/ubuntu-ports/"; \
+  fi && \
+  printf "deb ${UBUNTU_REPO} ${LATEST_UBUNTU_VERSION} main restricted universe multiverse\ndeb-src ${UBUNTU_REPO} ${LATEST_UBUNTU_VERSION} main restricted universe multiverse" >> /etc/apt/sources.list && \
+  printf "Package: *\nPin: release n=${LATEST_UBUNTU_VERSION}\nPin-Priority: 450" > /etc/apt/preferences.d/preferences && \
+  apt-get update && \
+  echo "**** install dev packages ****" && \
+  apt-get install --no-install-recommends -y \
+    autoconf \
+    bc \
+    build-essential \
+    cmake \
+    git \
+    libde265-dev \
+    libexif-dev \
+    libexpat1-dev \
+    libglib2.0-dev \
+    libgsf-1-dev \
+    libjpeg-dev \
+    libltdl-dev \
+    libbrotli-dev \
+    librsvg2-dev \
+    libspng-dev \
+    libtool \
+    libwebp-dev \
+    meson \
+    pkg-config \
+    unzip && \
+  apt-get install --no-install-recommends -y -t ${LATEST_UBUNTU_VERSION} \
+    libdav1d-dev \
+    libhwy-dev \
+    libwebp-dev && \
+  echo "**** install runtime packages ****" && \
+  apt-get install --no-install-recommends -y \
+    libdav1d7 \
+    libde265-0 \
+    libexif12 \
+    libexpat1 \
+    libgcc-s1 \
+    libglib2.0-0 \
+    libgomp1 \
+    libgsf-1-114 \
+    libio-compress-brotli-perl \
+    liblcms2-2 \
+    liblqr-1-0 \
+    libltdl7 \
+    libmimalloc2.0 \
+    libopenexr-3-1-30 \
+    libopenjp2-7 \
+    libpng16-16 \
+    librsvg2-2 \
+    libspng0 \
+    mesa-utils \
+    mesa-va-drivers \
+    mesa-vulkan-drivers \
+    zlib1g && \
+  apt-get install --no-install-recommends -y -t ${LATEST_UBUNTU_VERSION} \
+    libhwy1t64 \
+    libwebp7 \
+    libwebpdemux2 \
+    libwebpmux3 && \
+  if [ $(arch) = "x86_64" ]; then \
+    echo "**** install intel dependencies ****" && \
+    apt-get install --no-install-recommends -y \
+      intel-media-va-driver-non-free \
+      ocl-icd-libopencl1 && \
+    INTEL_DEPENDENCIES=$(curl -sX GET "https://api.github.com/repos/intel/compute-runtime/releases/latest" | jq -r '.body' | grep wget | grep -v .sum | grep -v .ddeb | sed 's|wget ||g') && \
+    mkdir -p /tmp/intel && \
+    for i in $INTEL_DEPENDENCIES; do \
+      curl -fS --retry 3 --retry-connrefused -o \
+        /tmp/intel/$(basename "${i%$'\r'}") -L \
+        "${i%$'\r'}"; \
+    done && \
+    dpkg -i /tmp/intel/*.deb; \
+  fi && \
+  echo "**** download base-images ****" && \
+  if [ -z ${VERSION} ]; then \
+    VERSION=$(curl -sL https://api.github.com/repos/immich-app/base-images/tags | \
+        jq -r '.[0].name'); \
+  fi && \
+  curl -o \
+    /tmp/immich-dependencies.tar.gz -L \
+    "https://github.com/immich-app/base-images/archive/refs/tags/${VERSION}.tar.gz" && \
+  tar xf \
+    /tmp/immich-dependencies.tar.gz -C \
+    /tmp/immich-dependencies --strip-components=1 && \
+  echo "**** build immich dependencies ****" && \
+  mv \
+    /tmp/build-libjxl.sh.patch \
+    /tmp/immich-dependencies/server/bin && \
+  cd /tmp/immich-dependencies/server/bin && \
+  FFMPEG_VERSION=$(jq -cr '.packages[] | select(.name == "ffmpeg").version' /tmp/immich-dependencies/server/bin/build-lock.json) && \
+  TARGETARCH=${TARGETARCH:=$(dpkg --print-architecture)} && \
+  curl -o \
+    /tmp/ffmpeg.deb -L \
+    "https://github.com/jellyfin/jellyfin-ffmpeg/releases/download/v${FFMPEG_VERSION}/jellyfin-ffmpeg7_${FFMPEG_VERSION}-noble_${TARGETARCH}.deb" && \
+  apt-get install --no-install-recommends -y -f \
+    /tmp/ffmpeg.deb && \
+  ldconfig /usr/lib/jellyfin-ffmpeg/lib && \
+  ln -s /usr/lib/jellyfin-ffmpeg/ffmpeg /usr/bin && \
+  ln -s /usr/lib/jellyfin-ffmpeg/ffprobe /usr/bin && \
+  patch < build-libjxl.sh.patch && \
+  ./build-libjxl.sh && \
+  ./build-libheif.sh && \
+  ./build-libraw.sh && \
+  ./build-imagemagick.sh && \
+  ./build-libvips.sh && \
+  mv \
+    /tmp/immich-dependencies/server/bin/build-lock.json \
+    /app/immich/server && \
+  echo "**** download geocoding data ****" && \
+  curl -o \
+    /tmp/cities500.zip -L \
+    "https://download.geonames.org/export/dump/cities500.zip" && \
+  curl -o \
+    /app/immich/server/geodata/admin1CodesASCII.txt -L \
+    "https://download.geonames.org/export/dump/admin1CodesASCII.txt" && \
+  curl -o \
+    /app/immich/server/geodata/admin2Codes.txt -L \
+    "https://download.geonames.org/export/dump/admin2Codes.txt" && \
+  curl -o \
+    /app/immich/server/geodata/ne_10m_admin_0_countries.geojson -L \
+    "https://raw.githubusercontent.com/nvkelso/natural-earth-vector/v5.1.2/geojson/ne_10m_admin_0_countries.geojson" && \
+  unzip \
+    /tmp/cities500.zip -d \
+    /app/immich/server/geodata && \
+  date --iso-8601=seconds | tr -d "\n" > /app/immich/server/geodata/geodata-date.txt && \
+  echo "**** cleanup ****" && \
+  apt-get remove -y --purge \
+    autoconf \
+    bc \
+    build-essential \
+    cmake \
+    git \
+    libdav1d-dev \
+    libde265-dev \
+    libexif-dev \
+    libexpat1-dev \
+    libglib2.0-dev \
+    libgsf-1-dev \
+    libheif-dev \
+    libhwy-dev \
+    libjpeg-dev \
+    libltdl-dev \
+    libbrotli-dev \
+    librsvg2-dev \
+    libspng-dev \
+    libtool \
+    libwebp-dev \
+    meson \
+    pkg-config \
+    unzip && \
+  apt-get autoremove -y --purge && \
+  apt-get clean && \
+  rm -rf \
+    /tmp/* \
+    /var/lib/apt/lists/* \
+    /var/log/* \
+    /var/tmp/*
