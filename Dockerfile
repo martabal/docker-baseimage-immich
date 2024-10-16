@@ -12,13 +12,10 @@ ARG LATEST_UBUNTU_VERSION="oracular"
 LABEL build_version="Build-date:- ${BUILD_DATE}"
 LABEL maintainer="martabal"
 
-# hadolint ignore=DL3045
-COPY build-libjxl.sh.patch /tmp
-
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 
 # run build
-# hadolint ignore=DL3003,DL3008,DL3013,SC2046,SC2086
+# hadolint ignore=DL3003,DL3008,SC2046
 RUN \
   mkdir -p \
     /app/immich/server/geodata \
@@ -112,9 +109,6 @@ RUN \
     /tmp/immich-dependencies.tar.gz -C \
     /tmp/immich-dependencies --strip-components=1 && \
   echo "**** build immich dependencies ****" && \
-  mv \
-    /tmp/build-libjxl.sh.patch \
-    /tmp/immich-dependencies/server/bin && \
   cd /tmp/immich-dependencies/server/bin && \
   FFMPEG_VERSION=$(jq -cr '.packages[] | select(.name == "ffmpeg").version' /tmp/immich-dependencies/server/bin/build-lock.json) && \
   TARGETARCH=${TARGETARCH:=$(dpkg --print-architecture)} && \
@@ -126,8 +120,9 @@ RUN \
   ldconfig /usr/lib/jellyfin-ffmpeg/lib && \
   ln -s /usr/lib/jellyfin-ffmpeg/ffmpeg /usr/bin && \
   ln -s /usr/lib/jellyfin-ffmpeg/ffprobe /usr/bin && \
-  patch < build-libjxl.sh.patch && \
-  ./build-libjxl.sh && \
+  ./build-libjxl.sh \
+    --JPEGLI_LIBJPEG_LIBRARY_SOVERSION 8 \
+    --JPEGLI_LIBJPEG_LIBRARY_VERSION 8.2.2 && \
   ./build-libheif.sh && \
   ./build-libraw.sh && \
   ./build-imagemagick.sh && \
