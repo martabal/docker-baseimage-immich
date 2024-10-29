@@ -7,6 +7,7 @@ ARG BUILD_DATE
 ARG VERSION
 
 ARG LATEST_UBUNTU_VERSION="oracular"
+ARG INTEL_DEPENDENCIES_VERSION="24.35.30872.22"
 
 # hadolint ignore=DL3048
 LABEL build_version="Build-date:- ${BUILD_DATE}"
@@ -85,10 +86,15 @@ RUN \
     libwebpmux3 && \
   if [ $(arch) = "x86_64" ]; then \
     echo "**** install intel dependencies ****" && \
+    if [ -z "${INTEL_DEPENDENCIES_VERSION}" ]; then \
+      INTEL_DEPENDENCIES_VERSION="latest"; \
+    else \
+      INTEL_DEPENDENCIES_VERSION="tags/${INTEL_DEPENDENCIES_VERSION}"; \
+    fi && \
     apt-get install --no-install-recommends -y \
       intel-media-va-driver-non-free \
       ocl-icd-libopencl1 && \
-    INTEL_DEPENDENCIES=$(curl -sX GET "https://api.github.com/repos/intel/compute-runtime/releases/latest" | jq -r '.body' | grep wget | grep -v .sum | grep -v .ddeb | sed 's|wget ||g') && \
+    INTEL_DEPENDENCIES=$(curl -sX GET "https://api.github.com/repos/intel/compute-runtime/releases/${INTEL_DEPENDENCIES_VERSION}" | jq -r '.body' | grep wget | grep -v .sum | grep -v .ddeb | sed 's|wget ||g') && \
     mkdir -p /tmp/intel && \
     for i in $INTEL_DEPENDENCIES; do \
       curl -fS --retry 3 --retry-connrefused -o \
@@ -98,7 +104,7 @@ RUN \
     dpkg -i /tmp/intel/*.deb; \
   fi && \
   echo "**** download base-images ****" && \
-  if [ -z ${VERSION} ]; then \
+  if [ -z "${VERSION}" ]; then \
     VERSION=$(curl -sL https://api.github.com/repos/immich-app/base-images/tags | \
         jq -r '.[0].name'); \
   fi && \
