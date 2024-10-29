@@ -9,7 +9,6 @@ ARG VERSION
 ARG LATEST_UBUNTU_VERSION="oracular"
 ARG INTEL_DEPENDENCIES_VERSION="latest"
 ARG INTEL_DEPENDENCIES_LEGACY_VERSION="24.35.30872.22"
-ARG INTEL_LEVEL_ZERO_GPU_LEGACY_VERSION="1.3.30872.22"
 
 # hadolint ignore=DL3048
 LABEL build_version="Build-date:- ${BUILD_DATE}"
@@ -104,14 +103,15 @@ RUN \
         "${i%$'\r'}"; \
     done && \
     dpkg -i /tmp/intel/*.deb && \
-    if [ -n "$INTEL_DEPENDENCIES_LEGACY_VERSION" ] && [ -n "$INTEL_LEVEL_ZERO_GPU_LEGACY_VERSION" ]; then \
+    if [ -n "$INTEL_DEPENDENCIES_LEGACY_VERSION" ]; then \
       mkdir -p \
         /tmp/intel/legacy && \
+      INTEL_LEVEL_ZERO_GPU=$(curl -sX GET "https://api.github.com/repos/intel/compute-runtime/releases/tags/${INTEL_DEPENDENCIES_LEGACY_VERSION}" | jq -r '.body' | grep wget | grep -v .sum | grep -v .ddeb | sed 's|wget ||g' | grep "intel-level-zero-gpu-legacy" | tr -d '\r') && \
       curl -o \
         /tmp/intel/legacy/intel-level-zero-gpu-legacy1.deb -L \
-        "https://github.com/intel/compute-runtime/releases/download/${INTEL_DEPENDENCIES_LEGACY_VERSION}/intel-level-zero-gpu-legacy1_${INTEL_LEVEL_ZERO_GPU_LEGACY_VERSION}_amd64.deb" && \
+        "$INTEL_LEVEL_ZERO_GPU" && \
       curl -o \
-      /tmp/intel/legacy/intel-opencl-icd-legacy1.deb -L \
+        /tmp/intel/legacy/intel-opencl-icd-legacy1.deb -L \
         "https://github.com/intel/compute-runtime/releases/download/${INTEL_DEPENDENCIES_LEGACY_VERSION}/intel-opencl-icd-legacy1_${INTEL_DEPENDENCIES_LEGACY_VERSION}_amd64.deb" && \
       dpkg -i /tmp/intel/legacy/*.deb; \
     fi; \
