@@ -139,6 +139,9 @@ RUN \
   ldconfig /usr/lib/jellyfin-ffmpeg/lib && \
   ln -s /usr/lib/jellyfin-ffmpeg/ffmpeg /usr/bin && \
   ln -s /usr/lib/jellyfin-ffmpeg/ffprobe /usr/bin && \
+  mv \
+    /tmp/immich-dependencies/server/bin/patches/* \
+    /tmp/immich-dependencies/server/bin && \
   ./build-libjxl.sh \
     --JPEGLI_LIBJPEG_LIBRARY_SOVERSION 8 \
     --JPEGLI_LIBJPEG_LIBRARY_VERSION 8.2.2 && \
@@ -194,6 +197,7 @@ RUN \
   apt-get autoremove -y --purge && \
   apt-get clean && \
   rm -rf \
+    /etc/apt/preferences.d/preferences \
     /tmp/* \
     /var/lib/apt/lists/* \
     /var/log/* \
