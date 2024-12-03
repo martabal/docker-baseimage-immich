@@ -95,14 +95,6 @@ RUN \
     apt-get install --no-install-recommends -y \
       intel-media-va-driver-non-free \
       ocl-icd-libopencl1 && \
-    INTEL_DEPENDENCIES=$(curl -sX GET "https://api.github.com/repos/intel/compute-runtime/releases/${INTEL_DEPENDENCIES_VERSION}" | jq -r '.body' | grep wget | grep -v .sum | grep -v .ddeb | sed 's|wget ||g') && \
-    mkdir -p /tmp/intel && \
-    for i in $INTEL_DEPENDENCIES; do \
-      curl -fS --retry 3 --retry-connrefused -o \
-        /tmp/intel/$(basename "${i%$'\r'}") -L \
-        "${i%$'\r'}"; \
-    done && \
-    dpkg -i /tmp/intel/*.deb && \
     if [ -n "$INTEL_DEPENDENCIES_LEGACY_VERSION" ]; then \
       mkdir -p \
         /tmp/intel/legacy && \
@@ -115,6 +107,14 @@ RUN \
         "https://github.com/intel/compute-runtime/releases/download/${INTEL_DEPENDENCIES_LEGACY_VERSION}/intel-opencl-icd-legacy1_${INTEL_DEPENDENCIES_LEGACY_VERSION}_amd64.deb" && \
       dpkg -i /tmp/intel/legacy/*.deb; \
     fi; \
+    INTEL_DEPENDENCIES=$(curl -sX GET "https://api.github.com/repos/intel/compute-runtime/releases/${INTEL_DEPENDENCIES_VERSION}" | jq -r '.body' | grep wget | grep -v .sum | grep -v .ddeb | sed 's|wget ||g') && \
+    mkdir -p /tmp/intel && \
+    for i in $INTEL_DEPENDENCIES; do \
+      curl -fS --retry 3 --retry-connrefused -o \
+        /tmp/intel/$(basename "${i%$'\r'}") -L \
+        "${i%$'\r'}"; \
+    done && \
+    dpkg -i /tmp/intel/*.deb; \
   fi && \
   echo "**** download base-images ****" && \
   if [ -z "${VERSION}" ]; then \
