@@ -6,7 +6,7 @@ FROM ghcr.io/martabal/baseimage-ubuntu:noble
 ARG BUILD_DATE
 ARG VERSION
 
-ARG LATEST_UBUNTU_VERSION="oracular"
+ARG LATEST_UBUNTU_VERSION="plucky"
 ARG INTEL_DEPENDENCIES_VERSION="latest"
 ARG INTEL_DEPENDENCIES_LEGACY_VERSION="24.35.30872.22"
 
@@ -37,6 +37,7 @@ RUN \
     build-essential \
     cmake \
     git \
+    libbrotli-dev \
     libde265-dev \
     libexif-dev \
     libexpat1-dev \
@@ -44,7 +45,6 @@ RUN \
     libgsf-1-dev \
     libjpeg-dev \
     libltdl-dev \
-    libbrotli-dev \
     librsvg2-dev \
     libspng-dev \
     libtool \
@@ -86,33 +86,34 @@ RUN \
     libwebpdemux2 \
     libwebpmux3 && \
   if [ $(arch) = "x86_64" ]; then \
-    echo "**** install intel dependencies ****" && \
-    if [ -z "${INTEL_DEPENDENCIES_VERSION}" ] || [ "${INTEL_DEPENDENCIES_VERSION}" = "latest" ]; then \
-      INTEL_DEPENDENCIES_VERSION="latest"; \
-    else \
-      INTEL_DEPENDENCIES_VERSION="tags/${INTEL_DEPENDENCIES_VERSION}"; \
-    fi && \
+    echo "**** install legacy intel dependencies ****" && \
     apt-get install --no-install-recommends -y \
       intel-media-va-driver-non-free \
       ocl-icd-libopencl1 && \
     if [ -n "$INTEL_DEPENDENCIES_LEGACY_VERSION" ]; then \
       mkdir -p \
         /tmp/intel/legacy && \
-      INTEL_LEVEL_ZERO_GPU=$(curl -sX GET "https://api.github.com/repos/intel/compute-runtime/releases/tags/${INTEL_DEPENDENCIES_LEGACY_VERSION}" | jq -r '.body' | grep wget | grep -v .sum | grep -v .ddeb | sed 's|wget ||g' | grep "intel-level-zero-gpu-legacy" | tr -d '\r') && \
-      curl -o \
-        /tmp/intel/legacy/intel-level-zero-gpu-legacy1.deb -L \
-        "$INTEL_LEVEL_ZERO_GPU" && \
-      curl -o \
-        /tmp/intel/legacy/intel-opencl-icd-legacy1.deb -L \
-        "https://github.com/intel/compute-runtime/releases/download/${INTEL_DEPENDENCIES_LEGACY_VERSION}/intel-opencl-icd-legacy1_${INTEL_DEPENDENCIES_LEGACY_VERSION}_amd64.deb" && \
-      dpkg -i /tmp/intel/legacy/*.deb; \
+      INTEL_LEGACY_DEPENDENCIES=$(curl -sX GET "https://api.github.com/repos/intel/compute-runtime/releases/tags/${INTEL_DEPENDENCIES_LEGACY_VERSION}" | jq -r '.body' | grep wget | grep -v .sum | grep -v .ddeb | sed 's|wget ||g') && \
+      mkdir -p /tmp/intel-legacy && \
+      for i in $INTEL_LEGACY_DEPENDENCIES; do \
+        curl -fS --retry 3 --retry-connrefused -o \
+          /tmp/intel-legacy/$(basename "${i%$'\r'}") -L \
+          "${i%$'\r'}" || exit 1; \
+      done && \
+      dpkg -i /tmp/intel-legacy/*.deb; \
     fi; \
+    echo "**** install intel dependencies ****" && \
+    if [ -z "${INTEL_DEPENDENCIES_VERSION}" ] || [ "${INTEL_DEPENDENCIES_VERSION}" = "latest" ]; then \
+      INTEL_DEPENDENCIES_VERSION="latest"; \
+    else \
+      INTEL_DEPENDENCIES_VERSION="tags/${INTEL_DEPENDENCIES_VERSION}"; \
+    fi && \
     INTEL_DEPENDENCIES=$(curl -sX GET "https://api.github.com/repos/intel/compute-runtime/releases/${INTEL_DEPENDENCIES_VERSION}" | jq -r '.body' | grep wget | grep -v .sum | grep -v .ddeb | sed 's|wget ||g') && \
     mkdir -p /tmp/intel && \
     for i in $INTEL_DEPENDENCIES; do \
       curl -fS --retry 3 --retry-connrefused -o \
         /tmp/intel/$(basename "${i%$'\r'}") -L \
-        "${i%$'\r'}"; \
+        "${i%$'\r'}" || exit 1; \
     done && \
     dpkg -i /tmp/intel/*.deb; \
   fi && \
