@@ -37,7 +37,6 @@ RUN \
     build-essential \
     cmake \
     git \
-    libbrotli-dev \
     libde265-dev \
     libexif-dev \
     libexpat1-dev \
@@ -45,6 +44,7 @@ RUN \
     libgsf-1-dev \
     libjpeg-dev \
     libltdl-dev \
+    libbrotli-dev \
     librsvg2-dev \
     libspng-dev \
     libtool \
@@ -197,7 +197,7 @@ RUN \
     unzip && \
   apt-get autoremove -y --purge && \
   apt-get clean && \
-  head -n -2 /etc/apt/sources.list && \
+  sed -i '$d;$d' /etc/apt/sources.list && \
   rm -rf \
     /etc/apt/preferences.d/preferences \
     /tmp/* \
