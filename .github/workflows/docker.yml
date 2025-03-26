@@ -40,28 +40,13 @@ jobs:
           if [ "${{ inputs.version }}" != '' ]; then
             version="${{ inputs.version }}"
           else
-            version=$(curl -sL https://api.github.com/repos/immich-app/base-images/tags | jq -r '.[0].name')
-            counter=0
-
-            # Loop until version is not "null" or counter reaches 10
-            while [ $counter -lt 10 ]; do
-                version=$(curl -sL https://api.github.com/repos/immich-app/base-images/tags | jq -r '.[0].name')
-
-                # Check if version is not "null"
-                if [ "$version" != "null" ]; then
-                    echo "version is not null: $version"
-                    break
-                else
-                    echo "version is still null, retrying in 10 seconds..."
-                    sleep 10
-                    ((counter++))
-                fi
-            done
-
-            if [ "$version" = "null" ]; then
-                echo "version is still null after 10 attempts, exiting..."
-                exit 1
-            fi
+            mkdir check_version
+            cd check_version
+            git init
+            git remote add origin https://github.com/immich-app/base-images.git
+            git fetch --tags https://github.com/immich-app/base-images.git
+            version=$(git describe --tags $(git rev-list --tags --max-count=1))
+            cd ..
           fi
 
           echo "version=${version}" >> $GITHUB_OUTPUT
