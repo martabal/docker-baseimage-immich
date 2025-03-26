@@ -28,10 +28,13 @@ jobs:
         id: check_version
         run: |
           current_version=$(curl -sL https://api.github.com/repos/${{ github.repository_owner }}/${{ github.event.repository.name }}/releases/latest | jq -r '.tag_name')
-          version=$(curl -sL https://api.github.com/repos/immich-app/base-images/tags | jq -r '.[0].name')
-          if [[ "$current_version" == "null" || "$version" == "null" ]]; then
-              echo "new_version=false" >> $GITHUB_OUTPUT
-          fi
+          mkdir check_version
+          cd check_version
+          git init
+          git remote add origin https://github.com/immich-app/base-images.git
+          git fetch --tags https://github.com/immich-app/base-images.git
+          version=$(git describe --tags $(git rev-list --tags --max-count=1))
+          cd ..
           if [ "$current_version" != "$version" ]; then
             if git tag | grep -q "^$version$"; then
               echo "Tag '$version' exists."
