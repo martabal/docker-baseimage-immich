@@ -200,7 +200,10 @@ RUN \
     unzip && \
   apt-get autoremove -y --purge && \
   apt-get clean && \
-  head -n -2 /etc/apt/sources.list > /tmp/sources.list && mv /tmp/sources.list /etc/apt/sources.list && \
+  head -n -2 /etc/apt/sources.list > /tmp/sources.list && \
+  mv \
+    /tmp/sources.list \
+    /etc/apt/sources.list && \
   rm -rf \
     /etc/apt/preferences.d/preferences \
     /tmp/* \
