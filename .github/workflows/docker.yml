@@ -28,6 +28,14 @@ jobs:
 
     strategy:
       fail-fast: false
+      matrix:
+        include:
+          - tag: noble
+            ubuntu: noble
+          - tag: jammy
+            ubuntu: jammy
+          - tag: latest
+            ubuntu: noble
 
     steps:
       - name: Checkout code
@@ -61,12 +69,13 @@ jobs:
           images: |
             ghcr.io/${{ github.repository_owner }}/baseimage-immich
           tags: |
-            type=ref,event=pr,value=${{ steps.tags.outputs.version }},enable=${{ github.event_name == 'pull_request' }}
-            type=ref,event=pr,value=${{ steps.tags.outputs.version }},enable=${{ github.event_name == 'pull_request' }},suffix=-${{ steps.tags.outputs.version }}
-            type=ref,event=pr,value=${{ steps.tags.outputs.version }},enable=${{ github.event_name == 'pull_request' }},suffix=-${{ steps.tags.outputs.version }}-${{ steps.tags.outputs.commit }}
-            type=raw,value=latest,enable=${{ github.event_name != 'pull_request' }},suffix=${{ matrix.suffix }}
-            type=raw,value=${{ steps.tags.outputs.version }},enable=${{ github.event_name != 'pull_request' }}
-            type=raw,value=${{ steps.tags.outputs.version }},enable=${{ github.event_name != 'pull_request' }},suffix=-${{ steps.tags.outputs.commit }}
+            ${{ github.event_name == 'pull_request' && format('pr-{0}-{1}-{2}', matrix.tag, steps.tags.outputs.short_date, steps.tags.outputs.commit) || '' }}
+            ${{ github.event_name == 'pull_request' && format('pr-{0}-{1}', matrix.tag, steps.tags.outputs.short_date) || '' }}
+            ${{ github.event_name != 'pull_request' && format('{0}-{1}-{2}', matrix.tag, steps.tags.outputs.short_date, steps.tags.outputs.commit) || '' }}
+            ${{ github.event_name != 'pull_request' && format('{0}-{1}', matrix.tag, steps.tags.outputs.short_date) || '' }}
+            ${{ github.event_name != 'pull_request' && matrix.tag == 'latest' && matrix.ubuntu == 'noble' && 'latest' || '' }}
+            ${{ github.event_name != 'pull_request' && matrix.tag == 'latest' && matrix.ubuntu == 'noble' && format('{0}-{1}', steps.tags.outputs.short_date, steps.tags.outputs.commit) || '' }}
+            ${{ github.event_name != 'pull_request' && matrix.tag == 'latest' && matrix.ubuntu == 'noble' && steps.tags.outputs.short_date || '' }}
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
@@ -92,3 +101,4 @@ jobs:
           build-args: |
             BUILD_DATE=${{ steps.tags.outputs.build_date }}
             VERSION=${{ steps.tags.outputs.version }}
+            CURRENT_UBUNTU_VERSION=${{ matrix.ubuntu }}

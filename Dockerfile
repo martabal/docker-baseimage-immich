@@ -1,6 +1,8 @@
 # syntax=docker/dockerfile:1
 
-FROM ghcr.io/martabal/baseimage-ubuntu:noble
+ARG CURRENT_UBUNTU_VERSION="noble"
+
+FROM ghcr.io/martabal/baseimage-ubuntu:${CURRENT_UBUNTU_VERSION}
 
 # set version label
 ARG BUILD_DATE
@@ -137,7 +139,7 @@ RUN \
   TARGETARCH=${TARGETARCH:=$(dpkg --print-architecture)} && \
   curl -o \
     /tmp/ffmpeg.deb -L \
-    "https://github.com/jellyfin/jellyfin-ffmpeg/releases/download/v${FFMPEG_VERSION}/jellyfin-ffmpeg7_${FFMPEG_VERSION}-noble_${TARGETARCH}.deb" && \
+    "https://github.com/jellyfin/jellyfin-ffmpeg/releases/download/v${FFMPEG_VERSION}/jellyfin-ffmpeg7_${FFMPEG_VERSION}-${CURRENT_UBUNTU_VERSION}_${TARGETARCH}.deb" && \
   apt-get install --no-install-recommends -y -f \
     /tmp/ffmpeg.deb && \
   ldconfig /usr/lib/jellyfin-ffmpeg/lib && \
