@@ -15,8 +15,8 @@ on:
     - cron: "0 12 * * 2"
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  group: ${{ github.event_name != 'workflow_dispatch' && format('{0}-{1}', github.workflow, github.ref) || format('no-concurrency-{0}', github.run_id) }}
+  cancel-in-progress: ${{ github.event_name != 'workflow_dispatch' }}
 
 permissions:
   packages: write
