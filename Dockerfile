@@ -132,8 +132,8 @@ RUN \
     /tmp/immich-dependencies.tar.gz -C \
     /tmp/immich-dependencies --strip-components=1 && \
   echo "**** build immich dependencies ****" && \
-  cd /tmp/immich-dependencies/server/bin && \
-  FFMPEG_VERSION=$(jq -cr '.packages[] | select(.name == "ffmpeg").version' /tmp/immich-dependencies/server/bin/build-lock.json) && \
+  cd /tmp/immich-dependencies/server/sources && \
+  FFMPEG_VERSION=$(jq -cr '.version' /tmp/immich-dependencies/server/packages/ffmpeg.json) && \
   TARGETARCH=${TARGETARCH:=$(dpkg --print-architecture)} && \
   curl -o \
     /tmp/ffmpeg.deb -L \
@@ -143,19 +143,21 @@ RUN \
   ldconfig /usr/lib/jellyfin-ffmpeg/lib && \
   ln -s /usr/lib/jellyfin-ffmpeg/ffmpeg /usr/bin && \
   ln -s /usr/lib/jellyfin-ffmpeg/ffprobe /usr/bin && \
-  mv \
-    /tmp/immich-dependencies/server/bin/patches/* \
-    /tmp/immich-dependencies/server/bin && \
-  ./build-libjxl.sh \
+  ./libjxl.sh \
     --JPEGLI_LIBJPEG_LIBRARY_SOVERSION 8 \
     --JPEGLI_LIBJPEG_LIBRARY_VERSION 8.2.2 && \
-  ./build-libheif.sh && \
-  ./build-libraw.sh && \
-  ./build-imagemagick.sh && \
-  ./build-libvips.sh && \
-  mv \
-    /tmp/immich-dependencies/server/bin/build-lock.json \
-    /app/immich/server && \
+  ./libheif.sh && \
+  ./libraw.sh && \
+  ./imagemagick.sh && \
+  ./libvips.sh && \
+  cd /tmp/immich-dependencies/server && \
+  jq -s '.' packages/*.json > /tmp/packages.json && \
+  jq -s '.' sources/*.json > /tmp/sources.json && \
+  jq -n \
+    --slurpfile sources /tmp/sources.json \
+    --slurpfile packages /tmp/packages.json \
+    '{sources: $sources[0], packages: $packages[0]}' \
+    > /app/immich/server/build-lock.json && \
   echo "**** download geocoding data ****" && \
   curl -o \
     /tmp/cities500.zip -L \
