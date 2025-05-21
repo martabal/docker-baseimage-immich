@@ -150,9 +150,8 @@ RUN \
   ./libraw.sh && \
   ./imagemagick.sh && \
   ./libvips.sh && \
-  cd /tmp/immich-dependencies/server && \
-  jq -s '.' packages/*.json > /tmp/packages.json && \
-  jq -s '.' sources/*.json > /tmp/sources.json && \
+  jq -s '.' /tmp/immich-dependencies/server/packages/*.json > /tmp/packages.json && \
+  jq -s '.' /tmp/immich-dependencies/server/sources/*.json > /tmp/sources.json && \
   jq -n \
     --slurpfile sources /tmp/sources.json \
     --slurpfile packages /tmp/packages.json \
