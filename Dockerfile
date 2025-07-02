@@ -6,7 +6,7 @@ FROM ghcr.io/martabal/baseimage-ubuntu:noble
 ARG BUILD_DATE
 ARG VERSION
 
-ARG LATEST_UBUNTU_VERSION="plucky"
+ARG LATEST_UBUNTU_VERSION="questing"
 ARG INTEL_DEPENDENCIES_VERSION="latest"
 ARG INTEL_DEPENDENCIES_LEGACY_VERSION="24.35.30872.22"
 
@@ -37,6 +37,7 @@ RUN \
     build-essential \
     cmake \
     git \
+    libaom-dev \
     libde265-dev \
     libexif-dev \
     libexpat1-dev \
@@ -81,6 +82,7 @@ RUN \
     mesa-vulkan-drivers \
     zlib1g && \
   apt-get install --no-install-recommends -y -t ${LATEST_UBUNTU_VERSION} \
+    libaom3 \
     libhwy1t64 \
     libwebp7 \
     libwebpdemux2 \
