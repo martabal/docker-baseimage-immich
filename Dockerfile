@@ -183,6 +183,7 @@ RUN \
     build-essential \
     cmake \
     git \
+    libaom-dev \
     libdav1d-dev \
     libde265-dev \
     libexif-dev \
