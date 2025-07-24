@@ -59,6 +59,7 @@ RUN \
     libwebp-dev && \
   echo "**** install runtime packages ****" && \
   apt-get install --no-install-recommends -y \
+    libaom3 \
     libdav1d7 \
     libde265-0 \
     libexif12 \
@@ -82,7 +83,6 @@ RUN \
     mesa-vulkan-drivers \
     zlib1g && \
   apt-get install --no-install-recommends -y -t ${LATEST_UBUNTU_VERSION} \
-    libaom3 \
     libhwy1t64 \
     libwebp7 \
     libwebpdemux2 \
