@@ -43,6 +43,7 @@ RUN \
     libexpat1-dev \
     libglib2.0-dev \
     libgsf-1-dev \
+    libheif-dev \
     libjpeg-dev \
     libltdl-dev \
     libbrotli-dev \
