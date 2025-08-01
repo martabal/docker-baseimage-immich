@@ -61,7 +61,6 @@ RUN \
   echo "**** install runtime packages ****" && \
   apt-get install --no-install-recommends -y \
     libaom3 \
-    libdav1d7 \
     libde265-0 \
     libexif12 \
     libexpat1 \
@@ -84,6 +83,7 @@ RUN \
     mesa-vulkan-drivers \
     zlib1g && \
   apt-get install --no-install-recommends -y -t ${LATEST_UBUNTU_VERSION} \
+    libdav1d7 \
     libhwy1t64 \
     libwebp7 \
     libwebpdemux2 \
@@ -184,14 +184,12 @@ RUN \
     build-essential \
     cmake \
     git \
-    libaom-dev \
     libdav1d-dev \
     libde265-dev \
     libexif-dev \
     libexpat1-dev \
     libglib2.0-dev \
     libgsf-1-dev \
-    libheif-dev \
     libjpeg-dev \
     libltdl-dev \
     libbrotli-dev \
